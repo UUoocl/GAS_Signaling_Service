@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input type="button" id="makeCall" value="Make Call"></input>
+    <p id="results"></p>
+
+    <script>
+        
+        const url = 'https://script.google.com/macros/s/AKfycby0v1XvjKK5AMID7Y-TyQz_mzB-Jw2eHmqI4lLnqep7vLPcN9QtK84p7devc3-d8yJhWw/exec?id=1'
+        document.getElementById("makeCall").addEventListener("click", makeCall)
+        
+        async function makeCall() {
+            console.log("creating offer")
+            const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
+            const peerConnection = new RTCPeerConnection(configuration);
+            // signalingChannel.addEventListener('message', async message => {
+            //     if (message.answer) {
+            //         const remoteDesc = new RTCSessionDescription(message.answer);
+            //         await peerConnection.setRemoteDescription(remoteDesc);
+            //     }
+            // });
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            console.log(offer)
+            //signalingChannel.send({'offer': offer});
+            fetch(url,{
+                method: 'POST',
+                body: offer
+            })
+        }
+                
+        async function getData(){
+            //let getGas = await fetch('https://script.google.com/macros/s/AKfycby0v1XvjKK5AMID7Y-TyQz_mzB-Jw2eHmqI4lLnqep7vLPcN9QtK84p7devc3-d8yJhWw/exec')
+            //console.log(getGas)
+            fetch(url)
+            .then(res => res.json())
+            .then(data =>{
+                document.getElementById("results").innerText = JSON.stringify(data);
+                console.log(data)
+            })
+        }    
+        getData()
+    </script>
+</body>
+</html>
