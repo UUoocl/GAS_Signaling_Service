@@ -23,41 +23,64 @@
         const dataChannelOptions = {ordered: true};
         let dataChannelCounter = 0;
         let sendDataLoop;
+        let answer;
+        let callerOffer
 
         async function answerCall() {
             console.log("Answering call")
             const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
             peerConnection = new RTCPeerConnection(configuration);
             console.log('Created remote peer connection object peerConnection');
-            peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
+            peerConnection.onicecandidate = e => onIceCandidate(e);
+            peerConnection.onicegatheringstatechange = e => onGatheringChange(e);
+            
             peerConnection.ondatachannel = receiveChannelCallback;
 
-            let callerOffer = await getData(`${url}?step=2`);
+            callerOffer = await getData(`${url}?step=2`);
             callerOffer = JSON.parse(callerOffer)
             console.log(callerOffer)
 
             if (callerOffer) {
                 peerConnection.setRemoteDescription(new RTCSessionDescription(callerOffer));
-                const answer = await peerConnection.createAnswer();
+                answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
-                postData(answer,`${url}?step=3`);
+                //postData(answer,`${url}?step=3`);
             }
         }
                 
-        async function onIceCandidate(pc, event) {
+        async function onIceCandidate(event) {
             try {
+                console.log('ice candidate', event)
+                    console.log('ice gathering', peerConnection.iceGatheringState)
+                    console.log('pc value', peerConnection)
                 // eslint-disable-next-line no-unused-vars
-                const ignore = await pc.addIceCandidate(event.candidate);
-                onAddIceCandidateSuccess(pc);
+                const ignore = await peerConnection.addIceCandidate(event.candidate);
+                onAddIceCandidateSuccess();
             } catch (e) {
-                onAddIceCandidateError(pc, e);
+                onAddIceCandidateError(e);
             }
 
-            console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+            console.log(`${peerConnection} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
         }
 
         function onAddIceCandidateSuccess() {
             console.log('AddIceCandidate success.');
+        }
+        
+        function onGatheringChange(e){
+            console.log("gather change", peerConnection.iceGatheringState)
+            if(peerConnection.iceGatheringState === 'complete'){
+                resetAnswer();
+            }
+        }
+
+        async function resetAnswer(){
+            console.log("reset Answer 1")
+            peerConnection.setRemoteDescription(new RTCSessionDescription(callerOffer));
+            answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            console.log(answer)
+            postData(answer,`${url}?step=3`);
         }
 
         function onAddIceCandidateError(error) {
@@ -74,6 +97,7 @@
         
         function onReceiveMessageCallback(event) {
             dataChannelDataReceived = event.data;
+            document.getElementById("postResults").innerText = dataChannelDataReceived;
             console.log(`DataChannel receive counter: ${dataChannelDataReceived}`);
         }
 

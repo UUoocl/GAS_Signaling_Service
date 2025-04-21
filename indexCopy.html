@@ -34,7 +34,7 @@
             const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
             peerConnection = new RTCPeerConnection(configuration);
             console.log('Created local peer connection object peerConnection');
-            peerConnection.onicecandidate = e => onIceCandidate(e);
+            peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
             
             sendChannel = peerConnection.createDataChannel('sendDataChannel', dataChannelOptions);
             sendChannel.onopen = onSendChannelStateChange;
@@ -54,7 +54,7 @@
             document.getElementById("answerText").innerText = JSON.stringify(answer);
             if (answer) {
                 const remoteDesc = new RTCSessionDescription(answer);
-                const ignore = await peerConnection.setRemoteDescription(remoteDesc);
+                await peerConnection.setRemoteDescription(remoteDesc);
             }
         }
         async function postData(bodyData, fullURL){
