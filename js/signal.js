@@ -14,6 +14,7 @@ async function postData(bodyData, fullURL){
     .then(data =>{
         //document.getElementById("postResults").innerText = JSON.stringify(data);
         console.log(data)
+        return data;
     })
 }
         

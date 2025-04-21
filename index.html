@@ -21,6 +21,7 @@
         let receiveChannel;
         const dataChannelOptions = {ordered: true};
         let dataChannelCounter = 0;
+        let offer;
         let sendDataLoop;
 
         const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
@@ -39,10 +40,9 @@
             sendChannel.onclose = onSendChannelStateChange;
             sendChannel.onerror = onSendChannelStateChange;
 
-            const offer = await peerConnection.createOffer();
+            offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             console.log(offer)
-            postData(offer,`${url}?step=1`).then( (data) => document.getElementById('postResults').innerText = data);
         }
         
         async function setAnswer(){
@@ -57,29 +57,32 @@
         }
         
         //getData()
-
+        
         function sendData() {
-                if (sendChannel.readyState === 'open') {
-                    sendChannel.send(dataChannelCounter);
-                    console.log(`DataChannel send counter: ${dataChannelCounter}`);
-                    dataChannelCounter++;
-                }
+            if (sendChannel.readyState === 'open') {
+                sendChannel.send(dataChannelCounter);
+                console.log(`DataChannel send counter: ${dataChannelCounter}`);
+                dataChannelCounter++;
             }
-
+        }
+        
         async function onIceCandidate(pc, event) {
             try {
                 // eslint-disable-next-line no-unused-vars
                 const ignore = await pc.addIceCandidate(event.candidate);
+                console.log(`Ice gather status. ${pc.iceGatheringState}`);
                 onAddIceCandidateSuccess(pc);
             } catch (e) {
                 onAddIceCandidateError(pc, e);
             }
-
+            
             console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
         }
-
-            function onAddIceCandidateSuccess() {
-                console.log('AddIceCandidate success.');
+        
+        function onAddIceCandidateSuccess() {
+            
+            console.log(`AddIceCandidate success. ${iceGatheringState}`);
+            postData(offer,`${url}?step=1`).then( (data) => document.getElementById('postResults').innerText = data);
             }
 
             function onAddIceCandidateError(error) {
