@@ -81,6 +81,7 @@
             await peerConnection.setLocalDescription(answer);
             console.log(answer)
             postData(answer,`${url}?step=3`);
+            document.getElementById("postResults").innerText = dataChannelDataReceived;
         }
 
         function onAddIceCandidateError(error) {
