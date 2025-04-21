@@ -36,7 +36,7 @@
             console.log(callerOffer)
 
             if (callerOffer) {
-                peerConnection.setRemoteDescription(callerOffer);
+                peerConnection.setRemoteDescription(new RTCSessionDescription(callerOffer));
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 postData(answer,`${url}?step=3`);
