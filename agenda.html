@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda</title>
+</head>
+<body>
+    <input type="button" id="answerCall" value="Answer Call"></input>
+    <p id="getResults"></p>
+    <p id="postResults"></p>
+
+    <script>
+        
+        const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
+
+        document.getElementById("answerCall").addEventListener("click", answerCall)
+        let dataChannelDataReceived;
+        let peerConnection;
+        let sendChannel;
+        let receiveChannel;
+        const dataChannelOptions = {ordered: true};
+        let dataChannelCounter = 0;
+        let sendDataLoop;
+
+        async function answerCall() {
+            console.log("Answering call")
+            const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
+            peerConnection = new RTCPeerConnection(configuration);
+            console.log('Created remote peer connection object peerConnection');
+            peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
+            peerConnection.ondatachannel = receiveChannelCallback;
+
+            let callerOffer = await getData(`${url}?step=2`);
+            callerOffer = JSON.parse(callerOffer)
+            console.log(callerOffer)
+
+            if (callerOffer) {
+                peerConnection.setRemoteDescription(callerOffer);
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                postData(answer,`${url}?step=3`);
+            }
+        }
+
+        async function postData(bodyData, fullURL){
+            fetch(fullURL,{
+                method: 'POST',
+                // mode:'no-cors',
+                // cache: 'no-cache',
+                // credentials:'omit',
+                // headers:{
+                //     'Content-Type':'application/json'
+                // },
+                // redirect:'follow',
+                body: JSON.stringify(bodyData)
+            })
+            .then(res => res.json())
+            .then(data =>{
+                document.getElementById("postResults").innerText = JSON.stringify(data);
+                console.log(data)
+            })
+        }
+                
+        async function getData(fullURL){
+            //let getGas = await fetch('https://script.google.com/macros/s/AKfycby0v1XvjKK5AMID7Y-TyQz_mzB-Jw2eHmqI4lLnqep7vLPcN9QtK84p7devc3-d8yJhWw/exec')
+            //console.log(getGas)
+            const results = await fetch(fullURL)
+            .then(res => res.json())
+            .then(data =>{  
+                console.log(data)
+                return data;
+            })
+            return results;
+        }    
+        //getData()
+        async function onIceCandidate(pc, event) {
+            try {
+                // eslint-disable-next-line no-unused-vars
+                const ignore = await pc.addIceCandidate(event.candidate);
+                onAddIceCandidateSuccess(pc);
+            } catch (e) {
+                onAddIceCandidateError(pc, e);
+            }
+
+            console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+        }
+
+        function onAddIceCandidateSuccess() {
+            console.log('AddIceCandidate success.');
+        }
+
+        function onAddIceCandidateError(error) {
+            console.log(`Failed to add Ice Candidate: ${error.toString()}`);
+        }
+
+        function receiveChannelCallback(event) {
+            console.log('Receive Channel Callback');
+            receiveChannel = event.channel;
+            receiveChannel.onmessage = onReceiveMessageCallback;
+            receiveChannel.onopen = onReceiveChannelStateChange;
+            receiveChannel.onclose = onReceiveChannelStateChange;
+        }
+        
+        function onReceiveMessageCallback(event) {
+            dataChannelDataReceived = event.data;
+            console.log(`DataChannel receive counter: ${dataChannelDataReceived}`);
+        }
+
+        function onReceiveChannelStateChange() {
+            const readyState = receiveChannel.readyState;
+            console.log(`Receive channel state is: ${readyState}`);
+        }
+    </script>
+</body>
+</html>

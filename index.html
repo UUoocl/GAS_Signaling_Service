@@ -3,48 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Host</title>
 </head>
 <body>
     <input type="button" id="makeCall" value="Make Call"></input>
     <p id="results"></p>
+    <p>Offer Description</p>
+    <p id="postResults"></p>
+    <input type="button" id="setAnswer" value="Set Answer"></input>
+    <p id="answerText"></p>
 
     <script>
+        let dataChannelDataReceived;
+        let peerConnection;
+        let sendChannel;
+        let receiveChannel;
+        const dataChannelOptions = {ordered: true};
+        let dataChannelCounter = 0;
+        let sendDataLoop;
+
+        const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
         
-        const url = 'https://script.google.com/macros/s/AKfycby0v1XvjKK5AMID7Y-TyQz_mzB-Jw2eHmqI4lLnqep7vLPcN9QtK84p7devc3-d8yJhWw/exec?id=1'
         document.getElementById("makeCall").addEventListener("click", makeCall)
-        
+        document.getElementById("setAnswer").addEventListener("click", setAnswer)
+
         async function makeCall() {
             console.log("creating offer")
             const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
-            const peerConnection = new RTCPeerConnection(configuration);
-            // signalingChannel.addEventListener('message', async message => {
-            //     if (message.answer) {
-            //         const remoteDesc = new RTCSessionDescription(message.answer);
-            //         await peerConnection.setRemoteDescription(remoteDesc);
-            //     }
-            // });
+            peerConnection = new RTCPeerConnection(configuration);
+            console.log('Created local peer connection object peerConnection');
+            peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
+            sendChannel = peerConnection.createDataChannel('sendDataChannel', dataChannelOptions);
+            sendChannel.onopen = onSendChannelStateChange;
+            sendChannel.onclose = onSendChannelStateChange;
+            sendChannel.onerror = onSendChannelStateChange;
+
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             console.log(offer)
-            //signalingChannel.send({'offer': offer});
-            fetch(url,{
+            postData(offer,`${url}?step=1`);
+        }
+        
+        async function setAnswer(){
+            let answer = await getData(`${url}?step=4`);
+            answer = JSON.parse(answer)
+            console.log(answer)
+            document.getElementById("answerText").innerText = JSON.stringify(answer);
+            if (answer) {
+                const remoteDesc = new RTCSessionDescription(answer);
+                await peerConnection.setRemoteDescription(remoteDesc);
+            }
+        }
+        async function postData(bodyData, fullURL){
+            fetch(fullURL,{
                 method: 'POST',
-                body: offer
+                // mode:'no-cors',
+                // cache: 'no-cache',
+                // credentials:'omit',
+                // headers:{
+                //     'Content-Type':'application/json'
+                // },
+                // redirect:'follow',
+                body: JSON.stringify(bodyData)
+            })
+            .then(res => res.json())
+            .then(data =>{
+                document.getElementById("postResults").innerText = JSON.stringify(data);
+                console.log(data)
             })
         }
                 
-        async function getData(){
+        async function getData(fullURL){
             //let getGas = await fetch('https://script.google.com/macros/s/AKfycby0v1XvjKK5AMID7Y-TyQz_mzB-Jw2eHmqI4lLnqep7vLPcN9QtK84p7devc3-d8yJhWw/exec')
             //console.log(getGas)
-            fetch(url)
+            const results = await fetch(fullURL)
             .then(res => res.json())
-            .then(data =>{
-                document.getElementById("results").innerText = JSON.stringify(data);
+            .then(data =>{  
                 console.log(data)
+                return data;
             })
+            return results;
         }    
-        getData()
+        //getData()
+
+        function sendData() {
+                if (sendChannel.readyState === 'open') {
+                    sendChannel.send(dataChannelCounter);
+                    console.log(`DataChannel send counter: ${dataChannelCounter}`);
+                    dataChannelCounter++;
+                }
+            }
+
+            async function onIceCandidate(pc, event) {
+                try {
+                    // eslint-disable-next-line no-unused-vars
+                    const ignore = await pc.addIceCandidate(event.candidate);
+                    onAddIceCandidateSuccess(pc);
+                } catch (e) {
+                    onAddIceCandidateError(pc, e);
+                }
+
+                console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+            }
+
+            function onAddIceCandidateSuccess() {
+                console.log('AddIceCandidate success.');
+            }
+
+            function onAddIceCandidateError(error) {
+                console.log(`Failed to add Ice Candidate: ${error.toString()}`);
+            }
+
+            function receiveChannelCallback(event) {
+                console.log('Receive Channel Callback');
+                receiveChannel = event.channel;
+                receiveChannel.onmessage = onReceiveMessageCallback;
+                receiveChannel.onopen = onReceiveChannelStateChange;
+                receiveChannel.onclose = onReceiveChannelStateChange;
+            }
+
+            function onReceiveMessageCallback(event) {
+                dataChannelDataReceived = event.data;
+                console.log(`DataChannel receive counter: ${dataChannelDataReceived}`);
+            }
+
+            function onSendChannelStateChange() {
+                const readyState = sendChannel.readyState;
+                console.log(`Send channel state is: ${readyState}`);
+                if (readyState === 'open') {
+                    sendDataLoop = setInterval(sendData, 1000);
+                } else {
+                    clearInterval(sendDataLoop);
+                }
+            }
+
+            function onReceiveChannelStateChange() {
+                const readyState = receiveChannel.readyState;
+                console.log(`Receive channel state is: ${readyState}`);
+            }
     </script>
 </body>
 </html>
