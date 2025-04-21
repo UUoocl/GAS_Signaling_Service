@@ -13,6 +13,7 @@
     <input type="button" id="setAnswer" value="Set Answer"></input>
     <p id="answerText"></p>
 
+    <script src="js/signal.js" async></script>
     <script>
         let dataChannelDataReceived;
         let peerConnection;
@@ -41,7 +42,7 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             console.log(offer)
-            postData(offer,`${url}?step=1`);
+            postData(offer,`${url}?step=1`).then( (data) => document.getElementById('postResults').innerText = data);
         }
         
         async function setAnswer(){
@@ -65,17 +66,17 @@
                 }
             }
 
-            async function onIceCandidate(pc, event) {
-                try {
-                    // eslint-disable-next-line no-unused-vars
-                    const ignore = await pc.addIceCandidate(event.candidate);
-                    onAddIceCandidateSuccess(pc);
-                } catch (e) {
-                    onAddIceCandidateError(pc, e);
-                }
-
-                console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+        async function onIceCandidate(pc, event) {
+            try {
+                // eslint-disable-next-line no-unused-vars
+                const ignore = await pc.addIceCandidate(event.candidate);
+                onAddIceCandidateSuccess(pc);
+            } catch (e) {
+                onAddIceCandidateError(pc, e);
             }
+
+            console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+        }
 
             function onAddIceCandidateSuccess() {
                 console.log('AddIceCandidate success.');

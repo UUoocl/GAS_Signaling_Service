@@ -10,6 +10,7 @@
     <p id="getResults"></p>
     <p id="postResults"></p>
 
+    <script src="js/signal.js" async></script>
     <script>
         
         const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
@@ -42,38 +43,7 @@
                 postData(answer,`${url}?step=3`);
             }
         }
-
-        async function postData(bodyData, fullURL){
-            fetch(fullURL,{
-                method: 'POST',
-                // mode:'no-cors',
-                // cache: 'no-cache',
-                // credentials:'omit',
-                // headers:{
-                //     'Content-Type':'application/json'
-                // },
-                // redirect:'follow',
-                body: JSON.stringify(bodyData)
-            })
-            .then(res => res.json())
-            .then(data =>{
-                document.getElementById("postResults").innerText = JSON.stringify(data);
-                console.log(data)
-            })
-        }
                 
-        async function getData(fullURL){
-            //let getGas = await fetch('https://script.google.com/macros/s/AKfycby0v1XvjKK5AMID7Y-TyQz_mzB-Jw2eHmqI4lLnqep7vLPcN9QtK84p7devc3-d8yJhWw/exec')
-            //console.log(getGas)
-            const results = await fetch(fullURL)
-            .then(res => res.json())
-            .then(data =>{  
-                console.log(data)
-                return data;
-            })
-            return results;
-        }    
-        //getData()
         async function onIceCandidate(pc, event) {
             try {
                 // eslint-disable-next-line no-unused-vars
