@@ -21,7 +21,6 @@
         let receiveChannel;
         const dataChannelOptions = {ordered: true};
         let dataChannelCounter = 0;
-        let offer;
         let sendDataLoop;
 
         const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
@@ -30,19 +29,23 @@
         document.getElementById("setAnswer").addEventListener("click", setAnswer)
 
         async function makeCall() {
-            console.log("creating offer")
-            const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
+            console.log("creating peer connection")
+            const configuration = {'iceServers': [
+                {'urls': 'stun:stun.l.google.com:19302'},
+                {'urls': 'stun:stun.l.google.com:5349'}
+            ]};
             peerConnection = new RTCPeerConnection(configuration);
             console.log('Created local peer connection object peerConnection');
-            peerConnection.onicecandidate = e => onIceCandidate(peerConnection, e);
+            
+            peerConnection.onicecandidate = e => {
+                console.log("on ice callback",e)
+                onIceCandidate(peerConnection, e)};
+            
             sendChannel = peerConnection.createDataChannel('sendDataChannel', dataChannelOptions);
             sendChannel.onopen = onSendChannelStateChange;
             sendChannel.onclose = onSendChannelStateChange;
             sendChannel.onerror = onSendChannelStateChange;
-
-            offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            console.log(offer)
+            
         }
         
         async function setAnswer(){
@@ -69,8 +72,10 @@
         async function onIceCandidate(pc, event) {
             try {
                 // eslint-disable-next-line no-unused-vars
-                const ignore = await pc.addIceCandidate(event.candidate);
                 console.log(`Ice gather status. ${pc.iceGatheringState}`);
+                console.log(`event stringify ${JSON.stringify(event)}`);
+                console.log(`event ${event.candidate}`);
+                const ignore = await pc.addIceCandidate(event.candidate);
                 onAddIceCandidateSuccess(pc);
             } catch (e) {
                 onAddIceCandidateError(pc, e);
@@ -79,9 +84,14 @@
             console.log(`${pc} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
         }
         
-        function onAddIceCandidateSuccess() {
+        async function onAddIceCandidateSuccess() {
             
             console.log(`AddIceCandidate success. ${iceGatheringState}`);
+            
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            console.log(offer)
+            
             postData(offer,`${url}?step=1`).then( (data) => document.getElementById('postResults').innerText = data);
             }
 
