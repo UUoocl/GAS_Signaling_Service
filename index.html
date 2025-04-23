@@ -55,7 +55,7 @@
         // Listen for connectionstatechange on the local RTCPeerConnection
             peerConnection.addEventListener('connectionstatechange', event => {
                 if (peerConnection.connectionState === 'connected') {
-                    console.log('peers connected')     // Peers connected!
+                    console.log('peers connected', peerConnection)     // Peers connected!
                 }
             });
           
@@ -126,7 +126,7 @@
             async function onIceCandidate(event) {
                 try {   
                     console.log("candidate event", event)
-                    if(event.candidate){candidates.push(event.candidate)};
+                    if(event.candidate && event.candidate.type === "srflx"){candidates.push(event.candidate)};
                     onAddIceCandidateSuccess(peerConnection);
                 } catch (e) {
                     onAddIceCandidateError(peerConnection, e);
