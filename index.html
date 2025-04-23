@@ -22,7 +22,7 @@
         let dataChannelCounter = 0;
         let sendDataLoop;
         let offer;
-        let iceCount = 0;
+
 
         const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
         
@@ -35,6 +35,7 @@
             peerConnection = new RTCPeerConnection(configuration);
             console.log('Created local peer connection object peerConnection');
             peerConnection.onicecandidate = e => onIceCandidate(e);
+            peerConnection.onicegatheringstatechange = e => onGatheringChange(e);
             
             sendChannel = peerConnection.createDataChannel('sendDataChannel', dataChannelOptions);
             sendChannel.onopen = onSendChannelStateChange;
@@ -98,12 +99,7 @@
             }
 
             async function onIceCandidate(event) {
-                try {
-                    console.log('ice candidate', event)
-                    console.log('ice gathering', peerConnection.iceGatheringState)
-                    console.log('pc value', peerConnection)
-                    // eslint-disable-next-line no-unused-vars
-                    const ignore = await peerConnection.addIceCandidate(event.candidate);
+                try {   
                     onAddIceCandidateSuccess(peerConnection);
                 } catch (e) {
                     onAddIceCandidateError(peerConnection, e);
@@ -114,13 +110,16 @@
 
             function onAddIceCandidateSuccess() {
                 console.log('AddIceCandidate success.');
-                if(peerConnection.iceGatheringState === 'complete' && iceCount === 0){
+            }
+
+            function onGatheringChange(e){
+                console.log("gather change", peerConnection.iceGatheringState)
+                if(peerConnection.iceGatheringState === 'complete'){
                     resetOffer();
                 }
             }
 
             async function resetOffer(){
-                iceCount = 1
                 console.log("reset Offer")
                 offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
