@@ -22,6 +22,7 @@
         let dataChannelCounter = 0;
         let sendDataLoop;
         let offer;
+        const candidates = [];
 
 
         const url = 'https://script.google.com/macros/s/AKfycbwbVCo1_AozKouHDSbHeYMaxx_Azy63-UmJpyxGi3oGmFwCatd-6SEwkZtDgQ-KV0J4qw/exec'
@@ -31,9 +32,14 @@
 
         async function makeCall() {
             console.log("creating offer")
-            const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
+            const configuration = {'iceServers': [{'urls': [
+                'stun:stun.l.google.com:19302',
+                'stun:stun1.l.google.com:19302',
+                'stun:stun.cloudflare.com:3478',
+			]}]}
+            // const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
             peerConnection = new RTCPeerConnection(configuration);
-            console.log('Created local peer connection object peerConnection');
+            console.log('Created local peer connection object pe     erConnection');
             peerConnection.onicecandidate = e => onIceCandidate(e);
             peerConnection.onicegatheringstatechange = e => onGatheringChange(e);
             
@@ -41,22 +47,41 @@
             sendChannel.onopen = onSendChannelStateChange;
             sendChannel.onclose = onSendChannelStateChange;
             sendChannel.onerror = onSendChannelStateChange;
-
+            
             offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             console.log('offer 1', offer)
+
+        // Listen for connectionstatechange on the local RTCPeerConnection
+            peerConnection.addEventListener('connectionstatechange', event => {
+                if (peerConnection.connectionState === 'connected') {
+                    console.log('peers connected')     // Peers connected!
+                }
+            });
           
         }
         
         async function setAnswer(){
-            let answer = await getData(`${url}?step=4`);
-            answer = JSON.parse(answer)
-            console.log(answer)
+            const data = JSON.parse(await getData(`${url}?step=4`));
+            const answer = data[0];
+            const answerCandidates = data[1];
+
+            console.log("answer",answer);
+            console.log("answer candidates",answerCandidates);
+
             document.getElementById("answerText").innerText = JSON.stringify(answer);
             if (answer) {
                 const remoteDesc = new RTCSessionDescription(answer);
-                const ignore = await peerConnection.setRemoteDescription(remoteDesc);
+                await peerConnection.setRemoteDescription(remoteDesc);
             }
+
+            for(let i = 0; i < answerCandidates.length; i++){
+                    try {
+                        await peerConnection.addIceCandidate(answerCandidates[i]);
+                    } catch (e) {
+                        console.error('Error adding received ice candidate', e);
+                    }
+                }
         }
         async function postData(bodyData, fullURL){
             fetch(fullURL,{
@@ -100,6 +125,8 @@
 
             async function onIceCandidate(event) {
                 try {   
+                    console.log("candidate event", event)
+                    if(event.candidate){candidates.push(event.candidate)};
                     onAddIceCandidateSuccess(peerConnection);
                 } catch (e) {
                     onAddIceCandidateError(peerConnection, e);
@@ -115,16 +142,10 @@
             function onGatheringChange(e){
                 console.log("gather change", peerConnection.iceGatheringState)
                 if(peerConnection.iceGatheringState === 'complete'){
-                    resetOffer();
+                    const data = [offer, candidates]
+                    console.log("data",JSON.stringify(data))
+                    postData(data,`${url}?step=1`);
                 }
-            }
-
-            async function resetOffer(){
-                console.log("reset Offer")
-                offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                console.log(offer)
-                postData(offer,`${url}?step=1`);
             }
 
             function onAddIceCandidateError(error) {
